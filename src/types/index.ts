@@ -29,3 +29,6 @@ export interface SceneFormData {
   pedestrianStatus: PedestrianStatus
   note: string
 }
+
+/** 页面侧操作结果：成功时带回场景 id，失败时带回原因 */
+export type ActionResult = { ok: true; sceneId: string } | { ok: false; reason: string }

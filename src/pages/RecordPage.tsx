@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Bus, MapPin, Armchair, Clock, CloudSun, Signpost, TreePine, Users, FileText, Send } from 'lucide-react'
 import { useSceneStore } from '@/store/useSceneStore'
-import { getWeatherIcon, getTreeIcon, getPedestrianIcon, formatTimestamp } from '@/utils/sceneHelpers'
+import { useToast } from '@/components/Toast'
+import {
+  getWeatherIcon,
+  getTreeIcon,
+  getPedestrianIcon,
+  formatTimestamp,
+  WEATHERS,
+  TREES,
+  PEDESTRIANS,
+  SEAT_DIRECTIONS,
+} from '@/utils/sceneHelpers'
 import type { SceneFormData, Weather, TreeDensity, PedestrianStatus, SeatDirection } from '@/types'
-
-const WEATHERS: Weather[] = ['晴', '多云', '阴', '小雨', '大雨', '雪', '雾']
-const TREES: TreeDensity[] = ['稀疏', '适中', '茂密']
-const PEDESTRIANS: PedestrianStatus[] = ['稀少', '零星', '密集']
 
 const initialForm: SceneFormData = {
   routeName: '',
@@ -21,12 +27,16 @@ const initialForm: SceneFormData = {
 
 export default function RecordPage() {
   const saveScene = useSceneStore((s) => s.saveScene)
+  const undoLastSave = useSceneStore((s) => s.undoLastSave)
   const loadAll = useSceneStore((s) => s.loadAll)
+  const { showToast } = useToast()
   const [form, setForm] = useState<SceneFormData>(initialForm)
   const [now, setNow] = useState(new Date())
   const [showSuccess, setShowSuccess] = useState(false)
 
-  useEffect(() => { loadAll() }, [loadAll])
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000)
@@ -38,12 +48,30 @@ export default function RecordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    saveScene(form)
+    const result = saveScene(form)
+    if (result.ok === false) {
+      // 保存失败：表单内容原样保留，并说明原因
+      showToast({ kind: 'error', message: result.reason })
+      return
+    }
     setShowSuccess(true)
-    setTimeout(() => {
+    window.setTimeout(() => {
       setShowSuccess(false)
       setForm(initialForm)
     }, 1500)
+    showToast({
+      kind: 'success',
+      message: '窗景已保存到本地台账',
+      actionLabel: '撤销',
+      onAction: () => {
+        const undoResult = undoLastSave()
+        if (undoResult.ok === true) {
+          showToast({ kind: 'info', message: '已撤销本次保存' })
+        } else {
+          showToast({ kind: 'error', message: undoResult.reason })
+        }
+      },
+    })
   }
 
   return (
@@ -81,7 +109,7 @@ export default function RecordPage() {
           <div>
             <label className="text-mist-300 text-xs mb-1 flex items-center gap-1"><Armchair className="w-3 h-3" />座位方向</label>
             <div className="flex gap-2">
-              {(['左', '右'] as SeatDirection[]).map((d) => (
+              {SEAT_DIRECTIONS.map((d: SeatDirection) => (
                 <button key={d} type="button" onClick={() => update('seatDirection', d)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition ${form.seatDirection === d ? 'bg-dusk-400/20 text-dusk-400 border border-dusk-400' : 'bg-teal-850 text-mist-300 border border-transparent'}`}>
                   {d}侧
@@ -98,7 +126,7 @@ export default function RecordPage() {
           <div>
             <label className="text-mist-300 text-xs mb-1 block">天气</label>
             <div className="grid grid-cols-4 gap-2">
-              {WEATHERS.map((w) => (
+              {WEATHERS.map((w: Weather) => (
                 <button key={w} type="button" onClick={() => update('weather', w)}
                   className={`flex flex-col items-center gap-1 py-2 rounded-xl text-xs transition ${form.weather === w ? 'bg-dusk-400/20 border border-dusk-400 text-dusk-400' : 'bg-teal-850 border border-transparent text-mist-300'}`}>
                   {getWeatherIcon(w)}{w}
@@ -113,7 +141,7 @@ export default function RecordPage() {
           <div>
             <label className="text-mist-300 text-xs mb-1 flex items-center gap-1"><TreePine className="w-3 h-3" />树木密度</label>
             <div className="grid grid-cols-3 gap-2">
-              {TREES.map((t) => (
+              {TREES.map((t: TreeDensity) => (
                 <button key={t} type="button" onClick={() => update('treeDensity', t)}
                   className={`flex flex-col items-center gap-1 py-3 rounded-xl text-xs transition ${form.treeDensity === t ? 'bg-dusk-400/20 border border-dusk-400 text-dusk-400' : 'bg-teal-850 border border-transparent text-mist-300'}`}>
                   {getTreeIcon(t)}{t}
@@ -124,7 +152,7 @@ export default function RecordPage() {
           <div>
             <label className="text-mist-300 text-xs mb-1 flex items-center gap-1"><Users className="w-3 h-3" />行人状态</label>
             <div className="grid grid-cols-3 gap-2">
-              {PEDESTRIANS.map((p) => (
+              {PEDESTRIANS.map((p: PedestrianStatus) => (
                 <button key={p} type="button" onClick={() => update('pedestrianStatus', p)}
                   className={`flex flex-col items-center gap-1 py-3 rounded-xl text-xs transition ${form.pedestrianStatus === p ? 'bg-dusk-400/20 border border-dusk-400 text-dusk-400' : 'bg-teal-850 border border-transparent text-mist-300'}`}>
                   {getPedestrianIcon(p)}{p}
