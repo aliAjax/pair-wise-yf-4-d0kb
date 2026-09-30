@@ -11,15 +11,16 @@ import {
 import { Lightbulb, RefreshCw, Quote, Bus, ArrowRight } from 'lucide-react'
 
 export default function InspirePage() {
-  const { randomScene, refreshRandom, loadAll, scenes } = useSceneStore()
+  const { randomScene, refreshRandom, hydrate, view } = useSceneStore()
+  const mergedScenes = view.mergedScenes
   const [revealed, setRevealed] = useState(false)
   const [displayedPrompt, setDisplayedPrompt] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isSpinning, setIsSpinning] = useState(false)
 
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    void hydrate()
+  }, [hydrate])
 
   useEffect(() => {
     if (!revealed || !randomScene) return
@@ -57,7 +58,7 @@ export default function InspirePage() {
     }, 400)
   }, [refreshRandom])
 
-  if (scenes.length === 0) {
+  if (mergedScenes.length === 0) {
     return (
       <div className="min-h-screen bg-teal-950 flex flex-col items-center justify-center px-6 text-center">
         <Bus className="w-16 h-16 text-dusk-400/40 mb-6" />
